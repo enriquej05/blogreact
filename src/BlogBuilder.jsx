@@ -70,23 +70,72 @@ function Droppable({ id, children }) {
 }
 
 // Componente Subsection
-function Subsection({ id, items, renderItem, handleDelete, isGrid }) {
-  const gridStyle = isGrid
-    ? {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: '10px',
-      }
-    : {};
+function Subsection({ id, items, renderItem, handleDelete, layoutType }) {
+  const layoutStyles = {
+    'grid-3': {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(3, 1fr)',
+      gap: '10px',
+    },
+    'grid-3-split': {
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr 1fr',
+      gridTemplateRows: '1fr 1fr', // La tercera columna tendrá dos filas
+      gap: '10px',
+      gridTemplateAreas: `
+        "col1 col2 col3"
+        "col1 col2 col4"
+      `
+    }
+  };
+
+  const isGridSplit = layoutType === 'grid-3-split';
 
   return (
     <Droppable id={id}>
-      <div style={{ margin: '10px 0', ...gridStyle }}>
-        {items.map((itemId) => (
-          <DraggableWrapper key={itemId} id={itemId} isRemovable={true} onDelete={() => handleDelete(itemId, id)}>
-            {renderItem(itemId)}
-          </DraggableWrapper>
-        ))}
+      <div style={{ margin: '10px 0', ...layoutStyles[layoutType] }}>
+        {isGridSplit ? (
+          <>
+            {/* Columna 1 */}
+            <div style={{ gridArea: 'col1' }}>
+              {items[0] && (
+                <DraggableWrapper id={items[0]} isRemovable={true} onDelete={() => handleDelete(items[0], id)}>
+                  {renderItem(items[0])}
+                </DraggableWrapper>
+              )}
+            </div>
+            {/* Columna 2 */}
+            <div style={{ gridArea: 'col2' }}>
+              {items[1] && (
+                <DraggableWrapper id={items[1]} isRemovable={true} onDelete={() => handleDelete(items[1], id)}>
+                  {renderItem(items[1])}
+                </DraggableWrapper>
+              )}
+            </div>
+            {/* Primera parte de la Columna 3 */}
+            <div style={{ gridArea: 'col3' }}>
+              {items[2] && (
+                <DraggableWrapper id={items[2]} isRemovable={true} onDelete={() => handleDelete(items[2], id)}>
+                  {renderItem(items[2])}
+                </DraggableWrapper>
+              )}
+            </div>
+            {/* Segunda parte de la Columna 3 */}
+            <div style={{ gridArea: 'col4' }}>
+              {items[3] && (
+                <DraggableWrapper id={items[3]} isRemovable={true} onDelete={() => handleDelete(items[3], id)}>
+                  {renderItem(items[3])}
+                </DraggableWrapper>
+              )}
+            </div>
+          </>
+        ) : (
+          items.map((itemId, index) => (
+            <DraggableWrapper key={itemId} id={itemId} isRemovable={true} onDelete={() => handleDelete(itemId, id)}>
+              {renderItem(itemId)}
+            </DraggableWrapper>
+          ))
+        )}
       </div>
     </Droppable>
   );
@@ -135,10 +184,10 @@ function EditableComponent({ type, content, onEdit, classes, onClassChange }) {
   );
 }
 
-// Componente principal BlogBuilder
+// En el BlogBuilder añadimos la opción de 'grid-3-split'
 const BlogBuilder = () => {
   const [items, setItems] = useState({
-    available: ['title', 'paragraph', 'image', 'subsection', 'grid-3'], // Añadir subsección grid
+    available: ['title', 'paragraph', 'image', 'subsection', 'grid-3', 'grid-3-split'], // Añadir subsección dividida
     header: [],
     content: [],
     sidebar: [],
@@ -205,14 +254,14 @@ const BlogBuilder = () => {
       const component = components[id];
       if (!component) return null;
 
-      if (component.type === 'subsection' || component.type === 'grid-3') {
+      if (component.type === 'subsection' || component.type === 'grid-3' || component.type === 'grid-3-split') {
         return (
           <Subsection
             id={id}
             items={items[id] || []}
             renderItem={renderItem}
             handleDelete={handleDelete}
-            isGrid={component.type === 'grid-3'}
+            layoutType={component.type}
           />
         );
       }
@@ -230,36 +279,30 @@ const BlogBuilder = () => {
     [components, handleEdit, items, handleClassChange]
   );
 
-  const handleSave = async () => {
+  const handleSave = () => {
     const getComponentData = (id) => {
       const component = components[id];
-      
       if (!component) return null;
-  
-      // Si es una subsección o grid, debemos extraer también los items que contiene
-      if (component.type === 'subsection' || component.type === 'grid-3') {
+
+      if (component.type === 'subsection' || component.type === 'grid-3' || component.type === 'grid-3-split') {
         return {
           ...component,
-          items: (items[id] || []).map(getComponentData) // Recursivamente obtener los datos de sus hijos
+          items: (items[id] || []).map(getComponentData),
         };
       }
-  
-      // Para componentes simples, devolvemos el contenido normal
-      return {
-        ...component
-      };
+
+      return { ...component };
     };
-  
+
     const blogData = {
       header: items.header.map(getComponentData),
       content: items.content.map(getComponentData),
       sidebar: items.sidebar.map(getComponentData),
     };
-  
+
     console.log('Blog data to be saved:', blogData);
     alert('Blog data logged to console. Implement API call here.');
   };
-  
 
   return (
     <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCenter}>
@@ -314,3 +357,4 @@ const BlogBuilder = () => {
 };
 
 export default BlogBuilder;
+
